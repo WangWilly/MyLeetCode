@@ -21,4 +21,4 @@ make
 
 # Run
 echo "\nRunning..."
-./solution
+./build/solution
