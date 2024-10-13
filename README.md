@@ -17,3 +17,7 @@ Example:
 ## Optimal
 
 - Install `tree` to see the tree structure of the directory
+
+## References
+
+- https://github.com/kilian-hu/hackerrank-solutions

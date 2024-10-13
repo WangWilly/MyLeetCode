@@ -53,6 +53,9 @@ int main() {
     // Test case 4
     cout << s.maxValue(6, 2, 931384943) << endl; // 155230825
 
+    // Test case 5
+    cout << s.maxValue(3, 1, 7) << endl; // 3
+
     return 0;
 }
 
