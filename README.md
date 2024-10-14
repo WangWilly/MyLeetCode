@@ -7,8 +7,10 @@ This repository contains my solutions to LeetCode problems. I have solved these 
 - Map (Search Tree)
     - [No632](./No632): Smallest Range Covering Elements from K Lists
     - [No1942](./No1942): The Number of the Smallest Unoccupied Chair
+- Hash Map
+    - [No567](./No567): Permutation in String
 - Binary Search
-    - [No875](./No875):   Koko Eating Bananas
+    - [No875](./No875): Koko Eating Bananas
     - [No1011](./No1011): Capacity To Ship Packages Within D Days
     - [No1283](./No1283): Find the Smallest Divisor Given a Threshold
     - [No1482](./No1482): Minimum Number of Days to Make m Bouquets
@@ -16,6 +18,8 @@ This repository contains my solutions to LeetCode problems. I have solved these 
     - [No1802](./No1802): Maximum Value at a Given Index in a Bounded Array
 - Priority Queue
     - [No2530](./No2530): Maximal Score After Applying K Operations
+- Backtracking
+    - [No46](./No46): Permutations
 
 ## How to run the code (c++)
 
