@@ -89,3 +89,77 @@ int main() {
 ////////////////////////////////////////////////////////////////////////////////
 
 // 2^31 - 1 = 2147483647
+
+////////////////////////////////////////////////////////////////////////////////
+// Time limit exceeded, but the solution is correct
+
+/**
+class Solution {
+private:
+    unordered_map<int, unordered_map<int, pair<vector<int>, unordered_set<int>>>> mem;
+
+    pair<vector<int>, unordered_set<int>> rangeCompute(map<int, unordered_set<int>>& groupMap, int& g, map<int, unordered_set<int>>::iterator lo, map<int, unordered_set<int>>::reverse_iterator hi) {
+        if (mem.count(lo->first) && mem[lo->first].count(hi->first)) {
+            return mem[lo->first][hi->first];
+        }
+
+        if (lo->first == hi->first) {
+            mem[lo->first][lo->first] = {{lo->first, lo->first}, lo->second};
+            return mem[lo->first][lo->first];
+        }
+
+        pair<vector<int>, unordered_set<int>> resL;
+        if (next(hi, 1) != groupMap.rend()) {
+            resL = rangeCompute(groupMap, g, lo, next(hi, 1));
+        }
+
+        pair<vector<int>, unordered_set<int>> resR;
+        if (next(lo, 1) != groupMap.end()) {
+            resR = rangeCompute(groupMap, g, next(lo, 1), hi);
+        }
+
+        if (resL.second == resR.second && resL.second.size() == g) {
+            int lenL = resL.first[1] - resL.first[0];
+            int lenR = resR.first[1] - resR.first[0];
+            if (lenL <= lenR) {
+                mem[lo->first][hi->first] = resL;
+            } else {
+                mem[lo->first][hi->first] = resR;
+            }
+            
+            return mem[lo->first][hi->first];
+        }
+
+        if (resL.second.size() == g) {
+            mem[lo->first][hi->first] = resL;
+            return mem[lo->first][hi->first];
+        }
+
+        if (resR.second.size() == g) {
+            mem[lo->first][hi->first] = resR;
+            return mem[lo->first][hi->first];
+        }
+
+        unordered_set<int> uni(resL.second.begin(), resL.second.end());
+        uni.insert(resR.second.begin(), resR.second.end());
+        mem[lo->first][hi->first] = {{lo->first, hi->first}, uni};
+        return mem[lo->first][hi->first];
+    }
+public:
+    vector<int> smallestRange(vector<vector<int>>& nums) {
+        map<int, unordered_set<int>> groupMap;
+        for (int i = 0; i < nums.size(); i++) {
+            for (int j = 0; j < nums[i].size(); j++) {
+                groupMap[nums[i][j]].insert(i);
+            }
+        }
+        auto lo = groupMap.begin();
+        auto hi = groupMap.rbegin();
+
+        int g = nums.size();
+        auto res = rangeCompute(groupMap, g, lo, hi);
+
+        return res.first;
+    }
+};
+*/
