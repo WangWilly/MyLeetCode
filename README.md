@@ -25,8 +25,10 @@ This repository contains my solutions to LeetCode problems. I have solved these 
     - [HackerRank: Organizing Containers of Balls](./HackerOrganizingContainersofBalls): Organizing Containers of Balls
 - Implementation Skill
     - [Hackerrank: Extra Long Factorials](./HackerExtraLongFactorials): Extra Long Factorials
-    - (mod and map) [Hackerrank: Non-Divisible Subset](./HackerNonDivisibleSubset): Non-Divisible Subset
-    - (some issues TBD) [Hackerrank: User Friendly Password System](./HackerUserFriendlyPasswordSystem): User Friendly Password System
+    - [Hackerrank: Non-Divisible Subset](./HackerNonDivisibleSubset): Non-Divisible Subset
+        - mod and map
+    - (⚠️) [Hackerrank: User Friendly Password System](./HackerUserFriendlyPasswordSystem): User Friendly Password System
+    - [Hackerrank: Encryption](./HackerEncryption): Encryption
 
 ## How to run the code (c++)
 
