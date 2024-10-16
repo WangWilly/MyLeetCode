@@ -21,6 +21,12 @@ This repository contains my solutions to LeetCode problems. I have solved these 
     - [No2530](./No2530): Maximal Score After Applying K Operations
 - Backtracking
     - [No46](./No46): Permutations
+- Graph
+    - [HackerRank: Organizing Containers of Balls](./HackerOrganizingContainersofBalls): Organizing Containers of Balls
+- Implementation Skill
+    - [Hackerrank: Extra Long Factorials](./HackerExtraLongFactorials): Extra Long Factorials
+    - (mod and map) [Hackerrank: Non-Divisible Subset](./HackerNonDivisibleSubset): Non-Divisible Subset
+    - (some issues TBD) [Hackerrank: User Friendly Password System](./HackerUserFriendlyPasswordSystem): User Friendly Password System
 
 ## How to run the code (c++)
 
