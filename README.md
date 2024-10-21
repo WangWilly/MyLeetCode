@@ -17,12 +17,15 @@ This repository contains my solutions to LeetCode problems. I have solved these 
     - [No1539](./No1539): Kth Missing Positive Number
     - [No1802](./No1802): Maximum Value at a Given Index in a Bounded Array
     - [HackerRank: Climbing the Leaderboard](./HackerClimbingTheLeaderboard): Climbing the Leaderboard
+    - [HackerRank: Server Investment](./HackerServerInvestment): Server Investment
 - Priority Queue
     - [No2530](./No2530): Maximal Score After Applying K Operations
 - Backtracking
     - [No46](./No46): Permutations
 - Graph
     - [HackerRank: Organizing Containers of Balls](./HackerOrganizingContainersofBalls): Organizing Containers of Balls
+- Dynamic Programming
+    - [HackerRank: String Formation](./HackerStringFormation): String Formation
 - Implementation Skill
     - [Hackerrank: Extra Long Factorials](./HackerExtraLongFactorials): Extra Long Factorials
     - [Hackerrank: Non-Divisible Subset](./HackerNonDivisibleSubset): Non-Divisible Subset
