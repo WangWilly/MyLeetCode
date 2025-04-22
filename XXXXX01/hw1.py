@@ -1,63 +1,62 @@
-ACTION_CREATE_ACCOUNT = "CREATE_ACCOUNT"
-ACTION_DEPOSIT = "DEPOSIT"
-ACTION_PAY = "PAY"
+# aHR0cDovLzUyMDE5My54eXovRGlzY3V6LzFwb2ludDNhY3Jlcy90aHJlYWQtZDk4ODkzNy0xLTEuaHRtbA==
+# aHR0cDovLzUyMDE5My54eXovRGlzY3V6LzFwb2ludDNhY3Jlcy90aHJlYWQtNjIwNTc0ZC0xLTEuaHRtbA==
+
+import heapq
 
 action_set: set[str] = {
-    ACTION_CREATE_ACCOUNT,
-    ACTION_DEPOSIT,
-    ACTION_PAY,
+    "CREATE_ACCOUNT",
+    "DEPOSIT",
+    "PAY",
 }
 
 def process_queries(queries: list[list[str]]) -> list[str]:
-    accounts: dict[str, int] = {}
-    results: list[str] = []
+    res: list[str] = []
 
-    for query in queries:
-        action, timestamp, account_id = query[0], query[1], query[2]
+    timed_q: list[(int, str, list[str])] = []
+    for q in queries:
+        heapq.heappush(timed_q, (int(q[1]), q[0], q[2:]))
+
+    balances: dict[str, int] = {}
+
+    while len(timed_q) > 0:
+        q = heapq.heappop(timed_q)
+        timestamp = q[0]
+        action = q[1]
+        data = q[2]
 
         if action not in action_set:
-            raise ValueError(f"Invalid action: {action}")
+            raise Exception(f"action [{action}] not in the list")
 
-        if action == ACTION_CREATE_ACCOUNT:
-            if account_id in accounts:
-                results.append("false")
+        if action == "CREATE_ACCOUNT":
+            account_name = data[0]
+            if account_name in balances:
+                res.append("false")
                 continue
-            accounts[account_id] = 0
-            results.append("true")
+            balances[account_name] = 0
+            res.append("true")            
 
-        elif action == ACTION_DEPOSIT:
-            amount = int(query[3])
-            if account_id not in accounts:
-                results.append("")
+        elif action == "DEPOSIT":
+            account_name, amount = data[0], int(data[1])
+            if account_name not in balances:
+                res.append("")
                 continue
-            accounts[account_id] += amount
-            results.append(str(accounts[account_id]))
+            balances[account_name] += amount
+            res.append(balances[account_name])
 
-        elif action == ACTION_PAY:
-            amount = int(query[3])
-            if account_id not in accounts or accounts[account_id] < amount:
-                results.append("")
+        elif action == "PAY":
+            account_name, amount = data[0], int(data[1])
+            if account_name not in balances:
+                res.append("")
                 continue
-            accounts[account_id] -= amount
-            results.append(str(accounts[account_id]))
+            if balances[account_name] < amount:
+                res.append("")
+                continue
+            balances[account_name] -= amount
+            res.append(balances[account_name])
 
-    return results
 
+    return res
 
-# Example usage
-# queries = [
-#     ["CREATE_ACCOUNT", "1", "account1"],
-#     ["CREATE_ACCOUNT", "2", "account2"],
-#     ["DEPOSIT", "3", "account1", "2000"],
-#     ["DEPOSIT", "4", "account2", "3000"],
-#     ["TRANSFER", "5", "account1", "account2", "5000"],
-#     ["TRANSFER", "16", "account1", "account2", "1000"],
-#     ["ACCEPT_TRANSFER", "20", "account1", "transfer1"],
-#     ["ACCEPT_TRANSFER", "21", "non-existing", "transfer1"], ["ACCEPT_TRANSFER", "22", "account1", "transfer2"], ["ACCEPT_TRANSFER", "25", "account2", "transfer1"],
-#     ["ACCEPT_TRANSFER", "30", "account2", "transfer1"],
-#     ["TRANSFER", "40", "account1", "account2", "1000"],
-#     ["ACCEPT_TRANSFER", str (45 + MILLISECONDS_IN_1_DAY), "account2", "transfer2"], ["TRANSFER", str (50 + MILLISECONDS_IN_1_DAY), "account1", "account1", "1000"],
-# ]
 queries = [
     ["CREATE_ACCOUNT", "1",        "account1"],
     ["CREATE_ACCOUNT", "2",        "account1"],
@@ -67,7 +66,6 @@ queries = [
     ["PAY",            "6",        "non-existing", "2700"],
     ["PAY",            "7",        "account1",     "2701"],
     ["PAY",            "8",        "account1",     "200"],
-    # ["DEPOSIT",        "86400008", "account1",     "0"],    # check cashback
 ]
 
 results = process_queries(queries)

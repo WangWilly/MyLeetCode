@@ -1,177 +1,176 @@
 import heapq
 
-################################################################################
-# transfer
-
-ACTION_CREATE_ACCOUNT  = "CREATE_ACCOUNT"
-ACTION_DEPOSIT         = "DEPOSIT"
-ACTION_PAY             = "PAY"
-ACTION_TOP_ACTIVITY    = "TOP_ACTIVITY"
-ACTION_TRANSFER        = "TRANSFER"
-ACTION_ACCEPT_TRANSFER = "ACCEPT_TRANSFER"
-ACTION_TRANSFER_EXP    = "ACCEPT_TRANSFER_EXP"
-
 action_set: set[str] = {
-    ACTION_CREATE_ACCOUNT,
-    ACTION_DEPOSIT,
-    ACTION_PAY,
-    ACTION_TOP_ACTIVITY,
-    ACTION_TRANSFER,
-    ACTION_ACCEPT_TRANSFER,
-    ACTION_TRANSFER_EXP,
+    "CREATE_ACCOUNT",
+    "DEPOSIT",
+    "PAY",
+    "TOP_ACTIVITY",
+    "TRANSFER",
+    "TRANSFER_EXP",
+    "ACCEPT_TRANSFER",
 }
 
-################################################################################
-
-class Transfer:
-    def __init__(self, sender: str, receiver: str, amount: int, timestamp: int):
-        self.sender    = sender
-        self.receiver  = receiver
-        self.amount    = amount
-        self.timestamp = timestamp
-        self.status    = "PENDING"
-
-transfer_id_base = "transfer"
-MILLISECONDS_IN_1_DAY = EXPIRATION_MS = 86_400_000  # 24 hours in milliseconds
-
-################################################################################
+HOUR24_IN_MS = 86_400_000
 
 def process_queries(queries: list[list[str]]) -> list[str]:
-    time_order_queries: list[list[str]] = []
+    res: list[str] = []
+
+    timed_q: list[(int, str, list[str])] = []
     for q in queries:
-        action = q[0]
-        timestamp = int(q[1])
-        data = q[2:]
-        heapq.heappush(time_order_queries, (timestamp, action, data))
+        heapq.heappush(timed_q, (int(q[1]), q[0], q[2:]))
 
-    accounts: dict[str, int] = {}
-    results: list[str] = []
-    transaction_sums: dict[str, int] = {}
+    balances: dict[str, int] = {}
+    activities: dict[str, int] = {}
 
+    class Transfer:
+        def __init__(self, src_acc: str, tar_acc: str, amount: int, dead_time: int):
+            self.src_acc = src_acc
+            self.tar_acc = tar_acc
+            self.amount = amount
+            self.dead_time = dead_time
+            self.status = "PENDING"
+
+        def isOk(self, now_time: int):
+            return now_time < self.dead_time
+
+        def isPending(self):
+            return self.status == "PENDING"
+        
+        def isDone(self):
+            return self.status == "DONE"
+        
+        def isFailed(self):
+            return self.status == "FAILED"
+        
+        def setDone(self):
+            self.status = "DONE"
+
+        def setFailed(self):
+            self.status = "FAILED"
+        
     transfers: dict[str, Transfer] = {}
-    transfer_count = 1
+    t_basename = "transfer"
+    t_count = 1
 
-    while len(time_order_queries) > 0:
-        q = heapq.heappop(time_order_queries)
+    while len(timed_q) > 0:
+        q = heapq.heappop(timed_q)
         timestamp = q[0]
         action = q[1]
-        data: list[str] = q[2]
+        data = q[2]
 
         if action not in action_set:
-            raise ValueError(f"Invalid action: {action}")
+            raise Exception(f"action [{action}] not in the list")
 
-        if action == ACTION_CREATE_ACCOUNT:
-            account_id = data[0]
-            if account_id in accounts:
-                results.append("false")
+        if action == "CREATE_ACCOUNT":
+            account_name = data[0]
+            if account_name in balances:
+                res.append("false")
                 continue
-            accounts[account_id] = 0
-            transaction_sums[account_id] = 0
-            results.append("true")
+            balances[account_name] = 0
+            activities[account_name] = 0
+            res.append("true")            
 
-        elif action == ACTION_DEPOSIT:
-            account_id = data[0]
-            amount = int(data[1])
-            if account_id not in accounts:
-                results.append("")
+        elif action == "DEPOSIT":
+            account_name, amount = data[0], int(data[1])
+            if account_name not in balances:
+                res.append("")
                 continue
-            accounts[account_id] += amount
-            transaction_sums[account_id] += amount
-            results.append(str(accounts[account_id]))
+            balances[account_name] += amount
+            activities[account_name] += amount
+            res.append(balances[account_name])
 
-        elif action == ACTION_PAY:
-            account_id = data[0]
-            amount = int(data[1])
-            if account_id not in accounts or accounts[account_id] < amount:
-                results.append("")
+        elif action == "PAY":
+            account_name, amount = data[0], int(data[1])
+            if account_name not in balances:
+                res.append("")
                 continue
-            accounts[account_id] -= amount
-            transaction_sums[account_id] += amount
-            results.append(str(accounts[account_id]))
+            if balances[account_name] < amount:
+                res.append("")
+                continue
+            balances[account_name] -= amount
+            activities[account_name] += amount
+            res.append(balances[account_name])
 
-        elif action == ACTION_TOP_ACTIVITY:
+        elif action == "TOP_ACTIVITY":
             n = int(data[0])
-            sorted_accounts = sorted(
-                transaction_sums.items(),
-                key=lambda item: (-item[1], item[0])
-            )
-            top_accounts = sorted_accounts[:n]
-            formatted = ", ".join([f"{acc}({val})" for acc, val in top_accounts])
-            results.append(formatted)
+            filtered_activities = sorted(
+                activities.items(),
+                key= lambda act : (-act[1], act[0]),
+            )[:n]
+            res_str = ", ".join([f"{act[0]}({act[1]})" for act in filtered_activities])
+            res.append(res_str)
 
-        elif action == ACTION_TRANSFER:
-            src_account = data[0]
-            target_account = data[1]
-            amount = int(data[2])
-
-            if src_account == target_account or src_account not in accounts or accounts[src_account] < amount:
-                results.append("")
+        elif action == "TRANSFER":
+            src_acc, tar_acc, amount = data[0], data[1], int(data[2])
+            if src_acc not in balances:
+                res.append("")
                 continue
-
-            accounts[src_account] -= amount
-            transfer_uniq_id = f"{transfer_id_base}{transfer_count}"
-            transfers[transfer_uniq_id] = Transfer(sender=src_account, receiver=target_account, amount=amount, timestamp=timestamp)
-            transfer_count += 1
-
-            # reject
-            heapq.heappush(time_order_queries, (timestamp+EXPIRATION_MS, ACTION_TRANSFER_EXP, [transfer_uniq_id]))
-
-            # print(accounts)
-            results.append(transfer_uniq_id)
-        
-        elif action == ACTION_TRANSFER_EXP:
-            transfer_uniq_id = data[0]
-            if transfer_uniq_id not in transfers:
+            if tar_acc not in balances:
+                res.append("")
                 continue
-
-            transfer = transfers[transfer_uniq_id]
-            if transfer.status == "SUCCESS":
+            if src_acc == tar_acc:
+                res.append("")
                 continue
-            transfer.status = "FAILED"
-            src_account = transfer.sender
-            accounts[src_account] += transfer.amount
-            # print(accounts)
+            if balances[src_acc] < amount:
+                res.append("")
+                continue
+            balances[src_acc] -= amount
+            t_name = t_basename + str(t_count)
+            t_count += 1
+            transfers[t_name] = Transfer(src_acc, tar_acc, amount, timestamp+HOUR24_IN_MS)
+            # exp
+            heapq.heappush(timed_q, (timestamp+HOUR24_IN_MS, "TRANSFER_EXP", [t_name]))
+            res.append(t_name)
 
-        elif action == ACTION_ACCEPT_TRANSFER:
-            account_id = data[0]
-            transfer_id = data[1]
+        # MY
+        elif action == "TRANSFER_EXP":
+            transfer_id = data[0]
+            t = transfers[transfer_id]
+            if t.isDone() or t.isFailed():
+                continue
+            balances[t.src_acc] += t.amount
+            t.setFailed()
 
+        elif action == "ACCEPT_TRANSFER":
+            account_name, transfer_id = data[0], data[1]
+            if account_name not in balances:
+                res.append("false")
+                continue
             if transfer_id not in transfers:
-                results.append("false")
+                res.append("false")
+                continue
+            t = transfers[transfer_id]
+            if t.tar_acc != account_name:
+                res.append("false")
+                continue
+            if not t.isOk(timestamp):
+                res.append("false")
+                continue
+            if not t.isPending():
+                res.append("false")
                 continue
 
-            transfer = transfers[transfer_id]
-            if transfer.status != "PENDING":
-                results.append("false")
-                continue
-            if account_id != transfer.receiver:
-                results.append("false")
-                continue
-            if timestamp >= transfer.timestamp + EXPIRATION_MS:
-                results.append("false")
-                continue
+            balances[account_name] += t.amount
+            t.setDone()
+            res.append("true")
 
-            accounts[account_id] += transfer.amount
-            transfer.status = "SUCCESS"
-            # print(accounts)
-            results.append("true")
+    return res
 
-    return results
-
-
-# Example usage
 queries = [
-    ["CREATE_ACCOUNT", "1", "account1"],
-    ["CREATE_ACCOUNT", "2", "account2"],
-    ["DEPOSIT", "3", "account1", "2000"],
-    ["DEPOSIT", "4", "account2", "3000"],
-    ["TRANSFER", "5", "account1", "account2", "5000"],
-    ["TRANSFER", "16", "account1", "account2", "1000"],
-    ["ACCEPT_TRANSFER", "20", "account1", "transfer1"],
-    ["ACCEPT_TRANSFER", "21", "non-existing", "transfer1"], ["ACCEPT_TRANSFER", "22", "account1", "transfer2"], ["ACCEPT_TRANSFER", "25", "account2", "transfer1"],
-    ["ACCEPT_TRANSFER", "30", "account2", "transfer1"],
-    ["TRANSFER", "40", "account1", "account2", "1000"],
-    ["ACCEPT_TRANSFER", str (45 + MILLISECONDS_IN_1_DAY), "account2", "transfer2"], ["TRANSFER", str (50 + MILLISECONDS_IN_1_DAY), "account1", "account1", "1000"],
+    ["CREATE_ACCOUNT",  "1",                     "account1"],
+    ["CREATE_ACCOUNT",  "2",                     "account2"],
+    ["DEPOSIT",         "3",                     "account1",     "2000"],
+    ["DEPOSIT",         "4",                     "account2",     "3000"],
+    ["TRANSFER",        "5",                     "account1",     "account2", "5000"],
+    ["TRANSFER",        "16",                    "account1",     "account2", "1000"],
+    ["ACCEPT_TRANSFER", "20",                    "account1",     "transfer1"],
+    ["ACCEPT_TRANSFER", "21",                    "non-existing", "transfer1"],
+    ["ACCEPT_TRANSFER", "22",                    "account1",     "transfer2"],
+    ["ACCEPT_TRANSFER", "25",                    "account2",     "transfer1"],
+    ["ACCEPT_TRANSFER", "30",                    "account2",     "transfer1"],
+    ["TRANSFER",        "40",                    "account1",     "account2", "1000"],
+    ["ACCEPT_TRANSFER", str (45 + HOUR24_IN_MS), "account2",     "transfer2"],
+    ["TRANSFER",        str (50 + HOUR24_IN_MS), "account1",     "account1", "1000"],
 ]
 
 results = process_queries(queries)
