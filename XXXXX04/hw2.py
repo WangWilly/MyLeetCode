@@ -9,59 +9,81 @@ action_set: set[str] = {
 def process_queries(queries: list[list[str]]) -> list[str]:
     res: list[str] = []
 
-    class RegRecord:
-        def __init__(self, enter_time: int, curr_compansation: int):
-            self.enter_time = enter_time
-            self.leave_time = None
-            self.curr_compansation = curr_compansation
-        
-        def is_left(self) -> bool:
-            return not self.leave_time == None
+    class Position:
+        def __init__(self, pos: str, compen: int):
+            self.pos = pos
+            self.compen = compen
 
-        def set_leave(self, leave_time: int):
-            self.leave_time = leave_time
+    ############################################################################
+
+    class Record:
+        def __init__(self, time_start: int, pos_inst: Position):
+            self.time_start = time_start
+            self.time_end = None
+            self.pos_inst = pos_inst
+
+        def is_complete(self):
+            return self.time_end != None
+        
+        def clockout(self, timestamp: int):
+            self.time_end = timestamp
 
         def get_time(self) -> int:
-            if not self.is_left():
+            if self.time_end == None:
                 return 0
-            return self.leave_time - self.enter_time
+            return self.time_end - self.time_start
 
-        def get_salary(self) -> int:
-            return self.get_time() * self.curr_compansation
-    
+    ############################################################################
+
     class WorkerInfo:
-        def __init__(self, position: str, curr_compansation: int):
-            self.position = position
-            self.curr_compansation = curr_compansation
-            self.records: list[RegRecord] = []
+        def __init__(self, pos: str, compen: int):
+            self.pos_list: list[Position] = [Position(pos, compen)]
+            self.records: list[Record] = []
         
-        def add_time(self, timestamp: int):
-            if len(self.records) == 0 or self.records[-1].is_left():
-                self.records.append(RegRecord(timestamp, self.curr_compansation))
+        def reg(self, timestamp: int):
+            if len(self.records) == 0 or self.records[-1].is_complete():
+                self.records.append(Record(timestamp, self.pos_list[-1]))
                 return
-            self.records[-1].set_leave(timestamp)
+            self.records[-1].clockout(timestamp)
         
-        def get_all_time(self)->int:
-            time_res = 0
+        def get_all_time(self):
+            t = 0
             for r in self.records:
-                time_res += r.get_time()
-            return time_res
+                t += r.get_time()
+            return t
+        
+        def has_pos(self, pos: str) -> bool:
+            for p in self.pos_list:
+                if pos == p.pos:
+                    return True
+            return False
+
+        def get_pos_time(self, pos: str) -> int:
+            t = 0
+            for r in self.records:
+                if r.pos_inst.pos != pos:
+                    continue
+                t += r.get_time()
+            return t
 
     workers: dict[str, WorkerInfo] = {}
 
+    ############################################################################
+
     for q in queries:
         action, data = q[0], q[1:]
-        
+
         if action not in action_set:
-            raise Exception(f"action {action} not in list")
-        
+            raise Exception(f"action {action} not listed")
+
         if action == "ADD_WORKER":
-            worker_id, position, compansation = data[0], data[1], int(data[2])
+            worker_id, position, compensation = data[0], data[1], data[2]
             if worker_id in workers:
                 res.append("false")
                 continue
-            workers[worker_id] = WorkerInfo(position, compansation)
+            workers[worker_id] = WorkerInfo(position, compensation)
             res.append("true")
+            pass
 
         elif action == "REGISTER":
             worker_id, timestamp = data[0], int(data[1])
@@ -69,8 +91,9 @@ def process_queries(queries: list[list[str]]) -> list[str]:
                 res.append("invalid_request")
                 continue
             w = workers[worker_id]
-            w.add_time(timestamp)
+            w.reg(timestamp)
             res.append("registered")
+            pass
 
         elif action == "GET":
             worker_id = data[0]
@@ -79,21 +102,23 @@ def process_queries(queries: list[list[str]]) -> list[str]:
                 continue
             w = workers[worker_id]
             res.append(w.get_all_time())
+            pass
 
         elif action == "TOP_N_WORKERS":
             n, position = int(data[0]), data[1]
             filtered = sorted(
                 filter(
-                    lambda worker : position == worker[1].position,
+                    lambda x : x[1].has_pos(position),
                     workers.items(),
                 ),
-                key=lambda worker : (-worker[1].get_all_time(), worker[0])
+                key=lambda x : (-x[1].get_pos_time(position), x[0]),
             )[:n]
-
-            res_str = ", ".join([f"{w[0]}({w[1].get_all_time()})" for w in filtered])
+            res_str = ", ".join([f"{x[0]}({x[1].get_pos_time(position)})" for x in filtered])
             res.append(res_str)
+            pass
 
     return res
+        
 
 queries = [
     ["ADD_WORKER", "John", "Junior Developer", "120"],

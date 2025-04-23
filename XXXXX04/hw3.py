@@ -11,114 +11,130 @@ action_set: set[str] = {
 def process_queries(queries: list[list[str]]) -> list[str]:
     res: list[str] = []
 
-    class RegRecord:
-        def __init__(self, enter_time: int, curr_compansation: int):
-            self.enter_time = enter_time
-            self.leave_time = None
-            self.curr_compansation = curr_compansation
-        
-        def is_left(self) -> bool:
-            return not self.leave_time == None
+    class Position:
+        # def __init__(self, pos: str, compen: int):
+        #     self.pos = pos
+        #     self.compen = compen
+        def __init__(self, pos: str, compen: int, time_start: int):
+            self.pos = pos
+            self.compen = compen
+            self.time_start = time_start
 
-        def set_leave(self, leave_time: int):
-            self.leave_time = leave_time
+        def ok(self, timestamp: int):
+            return timestamp >= self.time_start
+
+    ############################################################################
+
+    class Record:
+        def __init__(self, time_start: int, pos_inst: Position):
+            self.time_start = time_start
+            self.time_end = None
+            self.pos_inst = pos_inst
+
+        def is_complete(self):
+            return self.time_end != None
+        
+        def clockout(self, timestamp: int):
+            self.time_end = timestamp
 
         def get_time(self) -> int:
-            if not self.is_left():
+            if self.time_end == None:
                 return 0
-            return self.leave_time - self.enter_time
+            return self.time_end - self.time_start
+        
+        def get_range_salary(self, time_start: int, time_end: int) -> int:
+            if self.time_end == None:
+                return 0
+            if time_start > self.time_end:
+                return 0
+            if time_end < self.time_start:
+                return 0
+            time_end = min(self.time_end, time_end)
+            time_start = max(self.time_start, time_start)
+            r = (time_end - time_start) * self.pos_inst.compen
+            return r
 
-        def get_salary(self) -> int:
-            print(self.leave_time, self.enter_time, self.curr_compansation)
-            return self.get_time() * self.curr_compansation
-    
+    ############################################################################
+
     class WorkerInfo:
-        def __init__(self, position: str, curr_compansation: int):
-            # self.position = position
-            # self.curr_compansation = curr_compansation
-            # self.compansations = []
-            # self.records: list[RegRecord] = []
-            self.pos_compan: dict[str, (int, int)] = {position: (-1, curr_compansation)}
-            self.pos_rec: dict[str, list[RegRecord]] = {}
-            self.is_still_in = ""
-
-        def promote(self, position: str, compansation: int, start_time: int):
-            self.pos_compan[position] = (start_time, compansation)
+        def __init__(self, pos: str, compen: int):
+            self.pos_list: list[Position] = [Position(pos, compen, 0)]
+            self.records: list[Record] = []
         
-        def add_time(self, timestamp: int):
-            if self.is_still_in != "":
-                self.pos_rec[self.is_still_in][-1].set_leave(timestamp)
-                self.is_still_in = ""
+        def reg(self, timestamp: int):
+            pos = self.pos_list[0]
+            for p in self.pos_list:
+                if not p.ok(timestamp):
+                    continue
+                pos = p
+            if len(self.records) == 0 or self.records[-1].is_complete():
+                # self.records.append(Record(timestamp, self.pos_list[-1]))
+                self.records.append(Record(timestamp, pos))
                 return
-            pos = ""
-            compan = 0
-            for c in sorted(self.pos_compan.items(), key=lambda pc : pc[1][0]):
-                if c[1][0] < timestamp:
-                    pos = c[0]
-                    compan = c[1][1]
-            if pos not in self.pos_rec:
-                self.pos_rec[pos] = []
-
-            # if len(self.records) == 0 or self.records[-1].is_left():
-            if len(self.pos_rec[pos]) == 0 or self.pos_rec[pos][-1].is_left():
-                # self.records.append(RegRecord(timestamp, compan))
-                self.pos_rec[pos].append(RegRecord(timestamp, compan))
-                self.is_still_in = pos
-                return
-            # self.records[-1].set_leave(timestamp)
-            # self.pos_rec[pos][-1].set_leave(timestamp)
-            # self.is_still = False
+            self.records[-1].clockout(timestamp)
         
-        def get_all_time(self)->int:
-            time_res = 0
-            for pr in self.pos_rec.items():
-                for r in pr[1]:
-                    time_res += r.get_time()
-            return time_res
-
-        def get_time(self, pos: str) -> int:
-            if pos not in self.pos_rec:
-                return -1
-            all_time = 0
-            for r in self.pos_rec[pos]:
-                all_time += r.get_time()
-            return all_time
+        def get_all_time(self):
+            t = 0
+            for r in self.records:
+                t += r.get_time()
+            return t
         
-        def get_salary(self, start_time: int, end_time: int) -> int:
-            # salary_sum = 0
-            # for r in self.records:
-            #     if not r.is_left():
-            #         continue
-            #     if r.enter_time < start_time or r.leave_time > end_time:
-            #         continue
-            #     salary_sum += r.get_salary()
-            salary_sum = 0
-            for pr in self.pos_rec.items():
-                for r in pr[1]:
-                    if not r.is_left():
-                        continue
-                    if r.enter_time < start_time or r.leave_time > end_time:
-                        continue
-                    salary_sum += r.get_salary()
-            return salary_sum
+        def has_pos(self, pos: str) -> bool:
+            # for p in self.pos_list:
+            #     if pos == p.pos:
+            #         return True
+            # return False
+            if len(self.records) == 0:
+                return False
+            p = self.records[-1].pos_inst.pos
+            return pos == p
 
+        def get_pos_time(self, pos: str) -> int:
+            t = 0
+            for r in self.records:
+                if r.pos_inst.pos != pos:
+                    continue
+                t += r.get_time()
+            return t
+        
+        def pos_has_record(self) -> bool:
+            p = self.pos_list[-1]
+            for r in self.records:
+                if not r.is_complete():
+                    continue
+                if r.pos_inst.pos == p.pos:
+                    return True
+            return False
 
+        # def promote(self, pos: str, compen: int):
+        #     self.pos_list.append(Position(pos, compen))
+        def promote(self, pos: str, compen: int, time_start: int):
+            self.pos_list.append(Position(pos, compen, time_start))
+
+        def calc_salary(self, time_start: int, time_end: int) -> int:
+            t = 0
+            for r in self.records:
+                t += r.get_range_salary(time_start, time_end)
+            return t
 
     workers: dict[str, WorkerInfo] = {}
 
+    ############################################################################
+
     for q in queries:
         action, data = q[0], q[1:]
-        
+
         if action not in action_set:
-            raise Exception(f"action {action} not in list")
-        
+            raise Exception(f"action {action} not listed")
+
         if action == "ADD_WORKER":
-            worker_id, position, compansation = data[0], data[1], int(data[2])
+            worker_id, position, compensation = data[0], data[1], int(data[2])
             if worker_id in workers:
                 res.append("false")
                 continue
-            workers[worker_id] = WorkerInfo(position, compansation)
+            workers[worker_id] = WorkerInfo(position, compensation)
             res.append("true")
+            pass
 
         elif action == "REGISTER":
             worker_id, timestamp = data[0], int(data[1])
@@ -126,8 +142,9 @@ def process_queries(queries: list[list[str]]) -> list[str]:
                 res.append("invalid_request")
                 continue
             w = workers[worker_id]
-            w.add_time(timestamp)
+            w.reg(timestamp)
             res.append("registered")
+            pass
 
         elif action == "GET":
             worker_id = data[0]
@@ -136,44 +153,45 @@ def process_queries(queries: list[list[str]]) -> list[str]:
                 continue
             w = workers[worker_id]
             res.append(w.get_all_time())
+            pass
 
         elif action == "TOP_N_WORKERS":
             n, position = int(data[0]), data[1]
             filtered = sorted(
                 filter(
-                    lambda worker : worker[1].get_time(position) != -1,
+                    lambda x : x[1].has_pos(position),
                     workers.items(),
                 ),
-                key=lambda worker : (-worker[1].get_time(position), worker[0])
+                key=lambda x : (-x[1].get_pos_time(position), x[0]),
             )[:n]
-
-            res_str = ", ".join([f"{w[0]}({w[1].get_time(position)})" for w in filtered])
+            res_str = ", ".join([f"{x[0]}({x[1].get_pos_time(position)})" for x in filtered])
             res.append(res_str)
+            pass
 
         elif action == "PROMOTE":
-            worker_id, new_position, new_compansation, start_time = data[0], data[1], int(data[2]), int(data[3])
+            worker_id, position, compensation, time_start = data[0], data[1], int(data[2]), int(data[3])
             if worker_id not in workers:
                 res.append("invalid_request")
                 continue
             w = workers[worker_id]
-            # if len(w.records) == 0 or not w.records[-1].is_left():
-            #     res.append("invalid_request")
-            #     continue
-            if w.is_still_in != "":
+            if not w.pos_has_record():
                 res.append("invalid_request")
                 continue
-            w.promote(new_position, new_compansation, start_time)
+            w.promote(position, compensation, time_start)
             res.append("success")
-        
+            pass
+
         elif action == "CALC_SALARY":
-            worker_id, start_time, end_time = data[0], int(data[1]), int(data[2])
+            worker_id, time_start, time_end = data[0], int(data[1]), int(data[2])
             if worker_id not in workers:
                 res.append("")
                 continue
             w = workers[worker_id]
-            res.append(w.get_salary(start_time, end_time))
+            res.append(w.calc_salary(time_start, time_end))
+            pass
 
     return res
+        
 
 queries = [
     ["ADD_WORKER", "John", "Middle Developer", "200"],
