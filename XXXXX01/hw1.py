@@ -1,5 +1,6 @@
 # aHR0cDovLzUyMDE5My54eXovRGlzY3V6LzFwb2ludDNhY3Jlcy90aHJlYWQtZDk4ODkzNy0xLTEuaHRtbA==
 # aHR0cDovLzUyMDE5My54eXovRGlzY3V6LzFwb2ludDNhY3Jlcy90aHJlYWQtNjIwNTc0ZC0xLTEuaHRtbA==
+# http://52O193.xyz/Discuz/1point3acres/thread-537225f-1-1.html
 
 import heapq
 
